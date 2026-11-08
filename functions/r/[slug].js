@@ -9,18 +9,14 @@
      • cf_clearance presente    → 302 → URL real
      • WebView do Instagram     → 302 → URL real
      • Qualquer outro           → 404 (não 401)
-
-   ⚠️ ATUALIZE o objeto DESTINATIONS com suas URLs reais.
-   ⚠️ As chaves DEVEM casar com o campo `path` dos cards em /api/data.js
-      (sem o prefixo /r/).
    ========================================================================== */
 
 const DESTINATIONS = {
     privacy:    'https://privacy.com.br/checkout/Rayanne_leite',
-    vip:        'https://t.me/SEU_LINK_VIP_AQUI',
-    exclusivos: 'https://t.me/SEU_LINK_EXCLUSIVOS_AQUI',
-    onlyfans:   'https://onlyfans.com/SEU_HANDLE_AQUI',
-    free:       'https://t.me/SEU_LINK_FREE_AQUI',
+    vip:        'https://t.me/RaiLeite_bot',
+    exclusivos: 'https://linkpriv.app/raianeleite',
+    onlyfans:   'https://onlyfans.com/rayane.leit',
+    free:       'https://t.me/Rayane_leite',
 };
 
 const KNOWN_BOT_RE = /facebookexternalhit|meta-externalagent|meta-externalfetcher|facebot|instagramexternalhit|spider|crawler|scraper|python-requests|curl\/|wget\/|httpclient|go-http-client|node-fetch|axios\/|okhttp\/|headlesschrome|phantomjs|puppeteer|selenium/i;
