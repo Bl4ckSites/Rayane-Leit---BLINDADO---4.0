@@ -1,22 +1,16 @@
-/* ==========================================================================
-   functions/_middleware.js
-   --------------------------------------------------------------------------
-   Bloqueio de borda — roda ANTES de qualquer Function ou asset.
-   Regras:
-     1. IP com ASN da Meta (32934 / 63293 / 54115) → 404.
-     2. User-Agent contendo padrões de bot/crawler → 404.
-     3. User-Agent vazio ou "curto demais" → 404 (scraper agressivo).
-     4. Qualquer outro (humano + WebView do Instagram) → next().
-   ========================================================================== */
 
-const META_ASNS = new Set([
-    32934,  // Facebook / Meta
-    63293,  // Meta (Facebook) — segundo ASN
-    54115,  // Meta / WhatsApp
-]);
+/*
+ * RAIANE LEIT — Cloudflare Pages Middleware
+ *
+ * Compatibilidade com Instagram WebView:
+ * - Não bloqueia usuários pelo ASN da Meta.
+ * - Bloqueia User-Agents conhecidos de bots e ferramentas de scraping.
+ * - Não exige cf_clearance no middleware.
+ * - Deixa a autenticação específica das rotas para cada Function.
+ */
 
 const BLOCKED_UA_PATTERNS = [
-    // Meta / Instagram bots
+    // Crawlers e robôs identificáveis
     'facebookexternalhit',
     'meta-externalagent',
     'meta-externalfetcher',
@@ -24,14 +18,15 @@ const BLOCKED_UA_PATTERNS = [
     'facebookplatform',
     'facebot',
     'instagramexternalhit',
+    'googlebot',
+    'bingbot',
 
-    // Crawlers genéricos / scrapers
-    'bot',
+    // Crawlers genéricos
     'spider',
     'crawler',
     'scraper',
 
-    // Ferramentas óbvias de scraping
+    // Ferramentas comuns de requisição automatizada
     'python-requests',
     'python-urllib',
     'curl/',
@@ -40,43 +35,39 @@ const BLOCKED_UA_PATTERNS = [
     'go-http-client',
     'node-fetch',
     'axios/',
-    'okhttp/',
     'headlesschrome',
     'phantomjs',
     'puppeteer',
     'selenium',
 ];
 
+function isBlockedUserAgent(userAgent) {
+    const ua = userAgent.toLowerCase();
+
+    return BLOCKED_UA_PATTERNS.some(pattern =>
+        ua.includes(pattern)
+    );
+}
+
 export async function onRequest(context) {
     const { request, next } = context;
-    const ua = (request.headers.get('User-Agent') || '').toLowerCase();
-    const cf = request.cf || {};
-    const asn = Number(cf.asn);
 
-    // 1) Bloqueio por IP (ASN da Meta) — mais confiável que UA.
-    if (Number.isFinite(asn) && META_ASNS.has(asn)) {
+    const userAgent = request.headers.get('User-Agent') || '';
+
+    // Bloqueia identificações conhecidas de automação.
+    if (isBlockedUserAgent(userAgent)) {
         return new Response('Not Found', {
             status: 404,
-            headers: { 'Cache-Control': 'no-store' },
+            headers: {
+                'Cache-Control': 'no-store',
+                'X-Content-Type-Options': 'nosniff',
+            },
         });
     }
 
-    // 2) Bloqueio por padrões de UA.
-    if (BLOCKED_UA_PATTERNS.some(pattern => ua.includes(pattern))) {
-        return new Response('Not Found', {
-            status: 404,
-            headers: { 'Cache-Control': 'no-store' },
-        });
-    }
+    // Não bloqueia pelo ASN da Meta.
+    // O Instagram WebView também pode utilizar essa infraestrutura.
+    // A proteção específica continua nas Functions e no Cloudflare WAF.
 
-    // 3) UA vazio / absurdamente curto → scraper.
-    if (ua.length < 10) {
-        return new Response('Not Found', {
-            status: 404,
-            headers: { 'Cache-Control': 'no-store' },
-        });
-    }
-
-    // 4) Deixa passar.
     return next();
 }
