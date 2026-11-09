@@ -1,73 +1,40 @@
-
-/*
- * RAIANE LEIT — Cloudflare Pages Middleware
- *
- * Compatibilidade com Instagram WebView:
- * - Não bloqueia usuários pelo ASN da Meta.
- * - Bloqueia User-Agents conhecidos de bots e ferramentas de scraping.
- * - Não exige cf_clearance no middleware.
- * - Deixa a autenticação específica das rotas para cada Function.
- */
-
-const BLOCKED_UA_PATTERNS = [
-    // Crawlers e robôs identificáveis
-    'facebookexternalhit',
-    'meta-externalagent',
-    'meta-externalfetcher',
-    'facebookcatalog',
-    'facebookplatform',
-    'facebot',
-    'instagramexternalhit',
-    'googlebot',
-    'bingbot',
-
-    // Crawlers genéricos
-    'spider',
-    'crawler',
-    'scraper',
-
-    // Ferramentas comuns de requisição automatizada
-    'python-requests',
-    'python-urllib',
-    'curl/',
-    'wget/',
-    'httpclient',
-    'go-http-client',
-    'node-fetch',
-    'axios/',
-    'headlesschrome',
-    'phantomjs',
-    'puppeteer',
-    'selenium',
-];
-
-function isBlockedUserAgent(userAgent) {
-    const ua = userAgent.toLowerCase();
-
-    return BLOCKED_UA_PATTERNS.some(pattern =>
-        ua.includes(pattern)
-    );
-}
+/* ==========================================================================
+   functions/_middleware.js
+   ========================================================================== */
 
 export async function onRequest(context) {
     const { request, next } = context;
+    const ua = (request.headers.get('User-Agent') || '').toLowerCase();
+    const cf = request.cf || {};
+    const asn = Number(cf.asn);
 
-    const userAgent = request.headers.get('User-Agent') || '';
-
-    // Bloqueia identificações conhecidas de automação.
-    if (isBlockedUserAgent(userAgent)) {
-        return new Response('Not Found', {
-            status: 404,
-            headers: {
-                'Cache-Control': 'no-store',
-                'X-Content-Type-Options': 'nosniff',
-            },
-        });
+    // 1) EXCEÇÃO DO INSTAGRAM: Libera na hora se for o WebView do app.
+    // (Isso impede que o proxy da Meta bloqueie usuários reais)
+    const isInstagramWebView = /instagram/i.test(ua) && /mobile\//i.test(ua);
+    if (isInstagramWebView) {
+        return next();
     }
 
-    // Não bloqueia pelo ASN da Meta.
-    // O Instagram WebView também pode utilizar essa infraestrutura.
-    // A proteção específica continua nas Functions e no Cloudflare WAF.
+    // 2) Bloqueio de bots conhecidos (Meta, Curl, Python, etc)
+    const BLOCKED_UA_PATTERNS = [
+        'facebookexternalhit', 'meta-externalagent', 'meta-externalfetcher',
+        'facebot', 'instagramexternalhit', 'bot', 'spider', 'crawler', 
+        'scraper', 'python-requests', 'curl/', 'wget/', 'httpclient'
+    ];
+    if (BLOCKED_UA_PATTERNS.some(pattern => ua.includes(pattern))) {
+        return new Response('Not Found', { status: 404 });
+    }
+
+    // 3) Bloqueio por IP (ASN da Meta) para o resto
+    const META_ASNS = new Set([32934, 63293, 54115]);
+    if (Number.isFinite(asn) && META_ASNS.has(asn)) {
+        return new Response('Not Found', { status: 404 });
+    }
+
+    // 4) UA vazio
+    if (ua.length < 10) {
+        return new Response('Not Found', { status: 404 });
+    }
 
     return next();
 }
