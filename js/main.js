@@ -1,36 +1,7 @@
 /* ==========================================================================
-   RAIANE LEIT — main.js (MODO DE DIAGNÓSTICO VISUAL EXTREMO)
+   RAIANE LEIT — main.js
    ========================================================================== */
 'use strict';
-
-// Variável global para facilitar a escrita na tela
-let debugContainer = null;
-
-function debugLog(message, isError = false) {
-    console.log(isError ? `[ERRO] ${message}` : `[DEBUG] ${message}`);
-    
-    if (!debugContainer) {
-        debugContainer = document.getElementById('cards-container');
-    }
-    
-    if (debugContainer) {
-        const p = document.createElement('div');
-        p.style.color = isError ? '#ff4444' : '#44ff44';
-        p.style.fontSize = '12px';
-        p.style.textAlign = 'center';
-        p.style.fontFamily = 'monospace';
-        p.style.margin = '5px 0';
-        p.style.padding = '5px';
-        p.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
-        p.textContent = message;
-        debugContainer.appendChild(p);
-    }
-}
-
-// Tratamento de erros global (se o script quebrar antes do DOMContentLoaded)
-window.addEventListener('error', function(e) {
-    debugLog(`Erro fatal de JS: ${e.message}`, true);
-});
 
 const SOCIALS = {
     instagram: 'https://www.instagram.com/rai.moraesht',
@@ -46,20 +17,13 @@ const ICONS = {
 };
 
 /* -------------------------------------------------------------
-   CARREGAMENTO DO COFRE COM DIAGNÓSTICO
+   CARREGAMENTO DO COFRE
    ------------------------------------------------------------- */
 async function loadVault() {
-    debugLog("1. Iniciando conexão com a API...");
-    
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-        debugLog("TIMEOUT: A API demorou mais de 15s e foi abortada.", true);
-        controller.abort();
-    }, 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
-        debugLog("2. Disparando fetch('/api/data')...");
-        
         const response = await fetch('/api/data', {
             method: 'GET',
             credentials: 'same-origin',
@@ -69,46 +33,20 @@ async function loadVault() {
         });
 
         clearTimeout(timeoutId);
-        debugLog(`3. Servidor respondeu com Status: ${response.status}`);
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status} (Bloqueio)`);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-        debugLog("4. Lendo JSON da resposta...");
-        const textData = await response.text(); // Lê como texto primeiro para debugar erros de HTML
-        
-        let data;
-        try {
-            data = JSON.parse(textData);
-        } catch (e) {
-            debugLog("ERRO: O servidor não retornou um JSON válido. Provavelmente retornou HTML (Bloqueio Cloudflare).", true);
-            throw new Error("JSON Inválido");
-        }
+        const data = await response.json();
 
-        debugLog("5. JSON lido com sucesso. Aplicando imagem...");
-        
         try {
             applyBackgroundSafe(data.backgroundImage);
-            debugLog("6. Imagem aplicada (ou ignorada por segurança).");
-        } catch (bgErr) {
-            debugLog("Aviso: Falha ao aplicar imagem, seguindo para os botões...", true);
-        }
+        } catch (_) { /* segue mesmo se a imagem falhar */ }
 
-        debugLog("7. Limpando tela e renderizando botões...");
         clearContainer();
         renderCards(data.cards);
-        debugLog("✅ SUCESSO! Site carregado.");
 
     } catch (err) {
         clearTimeout(timeoutId);
-        
-        let errorDetails = err.message;
-        if (err.name === 'AbortError') errorDetails = "Timeout de 15s atingido";
-        
-        debugLog(`❌ FALHA CRÍTICA: ${errorDetails}`, true);
-        
-        // Se der erro, mostra o botão de recarregar no final
         renderFallback();
     }
 }
@@ -120,7 +58,7 @@ function renderFallback() {
     const container = document.getElementById('cards-container');
     if (!container) return;
     container.setAttribute('aria-busy', 'false');
-    
+
     const btn = document.createElement('div');
     btn.className = 'card-item';
     btn.style.cursor = 'pointer';
@@ -138,7 +76,10 @@ function applyBackgroundSafe(base64) {
 
 function clearContainer() {
     const container = document.getElementById('cards-container');
-    if (container) { container.innerHTML = ''; container.setAttribute('aria-busy', 'false'); }
+    if (container) {
+        container.innerHTML = '';
+        container.setAttribute('aria-busy', 'false');
+    }
 }
 
 function renderCards(cards) {
@@ -161,7 +102,10 @@ function renderCards(cards) {
             iconWrap.innerHTML = ICONS[card.svg];
         } else if (card.iconSrc) {
             const img = document.createElement('img');
-            img.src = card.iconSrc; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+            img.src = card.iconSrc;
+            img.alt = '';
+            img.loading = 'lazy';
+            img.decoding = 'async';
             iconWrap.appendChild(img);
         }
 
@@ -211,68 +155,145 @@ function playClickSound() {
     if (!audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const now = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.type = 'triangle'; osc.frequency.setValueAtTime(1200, now); osc.frequency.exponentialRampToValueAtTime(320, now + 0.06);
-    gain.gain.setValueAtTime(0.0001, now); gain.gain.exponentialRampToValueAtTime(0.09, now + 0.005); gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
-    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.1);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1200, now);
+    osc.frequency.exponentialRampToValueAtTime(320, now + 0.06);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.09, now + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.1);
 }
 
 function createRipple(event, element) {
     if (prefersReducedMotion.matches || !element || element.querySelector('.ripple')) return;
-    const rect = element.getBoundingClientRect(); const size = Math.max(rect.width, rect.height);
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
     const cx = (event && typeof event.clientX === 'number') ? event.clientX : rect.left + rect.width / 2;
     const cy = (event && typeof event.clientY === 'number') ? event.clientY : rect.top + rect.height / 2;
-    const ripple = document.createElement('span'); ripple.className = 'ripple';
-    ripple.style.width = size + 'px'; ripple.style.height = size + 'px'; ripple.style.left = (cx - rect.left - size / 2) + 'px'; ripple.style.top = (cy - rect.top - size / 2) + 'px';
-    element.appendChild(ripple); ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.width = size + 'px';
+    ripple.style.height = size + 'px';
+    ripple.style.left = (cx - rect.left - size / 2) + 'px';
+    ripple.style.top = (cy - rect.top - size / 2) + 'px';
+    element.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
 }
 
-const TAP_MAX_DISTANCE = 10; const TAP_MAX_DURATION = 500;
+const TAP_MAX_DISTANCE = 10;
+const TAP_MAX_DURATION = 500;
 function attachTapHandler(element, handler) {
     let startX = 0, startY = 0, startTime = 0, isTap = false, lastHandled = 0;
-    const run = (event) => { const now = Date.now(); if (now - lastHandled < 400) return; lastHandled = now; playClickSound(); handler(event); };
-    element.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; startX = t.clientX; startY = t.clientY; startTime = Date.now(); isTap = true; }, { passive: true });
-    element.addEventListener('touchmove', (e) => { if (!isTap) return; const t = e.changedTouches[0]; if (Math.abs(t.clientX - startX) > TAP_MAX_DISTANCE || Math.abs(t.clientY - startY) > TAP_MAX_DISTANCE) isTap = false; }, { passive: true });
-    element.addEventListener('touchend', (e) => { if (!isTap || Date.now() - startTime > TAP_MAX_DURATION) return; const t = e.changedTouches[0]; if (Math.abs(t.clientX - startX) > TAP_MAX_DISTANCE || Math.abs(t.clientY - startY) > TAP_MAX_DISTANCE) return; e.preventDefault(); run({ clientX: t.clientX, clientY: t.clientY, currentTarget: element, target: e.target }); }, { passive: false });
-    element.addEventListener('click', (e) => { e.preventDefault(); run({ clientX: e.clientX, clientY: e.clientY, currentTarget: element, target: e.target }); });
+    const run = (event) => {
+        const now = Date.now();
+        if (now - lastHandled < 400) return;
+        lastHandled = now;
+        playClickSound();
+        handler(event);
+    };
+    element.addEventListener('touchstart', (e) => {
+        const t = e.changedTouches[0];
+        startX = t.clientX; startY = t.clientY; startTime = Date.now(); isTap = true;
+    }, { passive: true });
+    element.addEventListener('touchmove', (e) => {
+        if (!isTap) return;
+        const t = e.changedTouches[0];
+        if (Math.abs(t.clientX - startX) > TAP_MAX_DISTANCE || Math.abs(t.clientY - startY) > TAP_MAX_DISTANCE) isTap = false;
+    }, { passive: true });
+    element.addEventListener('touchend', (e) => {
+        if (!isTap || Date.now() - startTime > TAP_MAX_DURATION) return;
+        const t = e.changedTouches[0];
+        if (Math.abs(t.clientX - startX) > TAP_MAX_DISTANCE || Math.abs(t.clientY - startY) > TAP_MAX_DISTANCE) return;
+        e.preventDefault();
+        run({ clientX: t.clientX, clientY: t.clientY, currentTarget: element, target: e.target });
+    }, { passive: false });
+    element.addEventListener('click', (e) => {
+        e.preventDefault();
+        run({ clientX: e.clientX, clientY: e.clientY, currentTarget: element, target: e.target });
+    });
 }
 
-document.addEventListener('DOMContentLoaded', () => { 
-    initSocialLinks(); 
-    initModal(); 
-    
-    // Transforma o container em um console visível
-    const container = document.getElementById('cards-container');
-    if (container) {
-        container.innerHTML = ''; // Limpa o spinner
-        container.style.display = 'flex';
-        container.style.flexDirection = 'column';
-        container.style.alignItems = 'center';
-        container.style.justifyContent = 'flex-start';
-        container.style.padding = '10px';
-        container.style.background = 'rgba(0,0,0,0.8)';
-        container.style.borderRadius = '10px';
-        container.style.minHeight = '200px';
-    }
-    
-    loadVault(); 
+document.addEventListener('DOMContentLoaded', () => {
+    initSocialLinks();
+    initModal();
+    loadVault();
 });
 
-function initSocialLinks() { document.querySelectorAll('.social-link[data-social]').forEach(link => { const platform = link.getAttribute('data-social'); if (SOCIALS[platform]) link.href = SOCIALS[platform]; }); }
+function initSocialLinks() {
+    document.querySelectorAll('.social-link[data-social]').forEach(link => {
+        const platform = link.getAttribute('data-social');
+        if (SOCIALS[platform]) link.href = SOCIALS[platform];
+    });
+}
 
 function initModal() {
-    const modal = document.getElementById('age-modal'); const closeBtn = document.getElementById('modal-close'); const confirmBtn = document.getElementById('modal-confirm'); const cancelBtn = document.getElementById('modal-cancel');
+    const modal = document.getElementById('age-modal');
+    const closeBtn = document.getElementById('modal-close');
+    const confirmBtn = document.getElementById('modal-confirm');
+    const cancelBtn = document.getElementById('modal-cancel');
     if (!modal) return;
-    let selectedDestination = null; let previouslyFocusedElement = null; let closeTimer = null;
-    function calculateScrollbarWidth() { const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth; document.body.style.setProperty('--scrollbar-compensation', scrollbarWidth + 'px'); }
-    const openModal = () => { clearTimeout(closeTimer); previouslyFocusedElement = document.activeElement; calculateScrollbarWidth(); if (closeBtn) closeBtn.classList.remove('is-closing'); modal.classList.remove('is-closing', 'active'); modal.hidden = false; document.body.classList.add('modal-active'); void modal.offsetHeight; modal.classList.add('active'); if (confirmBtn) confirmBtn.focus(); };
-    const closeModal = () => { if (modal.hidden || modal.classList.contains('is-closing')) return; modal.classList.add('is-closing'); modal.classList.remove('active'); document.body.classList.remove('modal-active'); clearTimeout(closeTimer); closeTimer = setTimeout(() => { modal.hidden = true; modal.classList.remove('is-closing'); if (closeBtn) closeBtn.classList.remove('is-closing'); if (previouslyFocusedElement && previouslyFocusedElement.focus) previouslyFocusedElement.focus(); }, TIMINGS.FADE_MS); selectedDestination = null; };
-    const closeBtnHandler = () => { if (closeBtn.classList.contains('is-closing')) return; closeBtn.classList.add('is-closing'); setTimeout(() => closeModal(), TIMINGS.ROTATION_MS); };
-    const confirmAndGo = () => { if (!selectedDestination) { closeModal(); return; } const url = selectedDestination; closeModal(); setTimeout(() => { window.location.href = url; }, TIMINGS.FADE_MS + 50); };
+
+    let selectedDestination = null;
+    let previouslyFocusedElement = null;
+    let closeTimer = null;
+
+    function calculateScrollbarWidth() {
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        document.body.style.setProperty('--scrollbar-compensation', scrollbarWidth + 'px');
+    }
+
+    const openModal = () => {
+        clearTimeout(closeTimer);
+        previouslyFocusedElement = document.activeElement;
+        calculateScrollbarWidth();
+        if (closeBtn) closeBtn.classList.remove('is-closing');
+        modal.classList.remove('is-closing', 'active');
+        modal.hidden = false;
+        document.body.classList.add('modal-active');
+        void modal.offsetHeight;
+        modal.classList.add('active');
+        if (confirmBtn) confirmBtn.focus();
+    };
+
+    const closeModal = () => {
+        if (modal.hidden || modal.classList.contains('is-closing')) return;
+        modal.classList.add('is-closing');
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-active');
+        clearTimeout(closeTimer);
+        closeTimer = setTimeout(() => {
+            modal.hidden = true;
+            modal.classList.remove('is-closing');
+            if (closeBtn) closeBtn.classList.remove('is-closing');
+            if (previouslyFocusedElement && previouslyFocusedElement.focus) previouslyFocusedElement.focus();
+        }, TIMINGS.FADE_MS);
+        selectedDestination = null;
+    };
+
+    const closeBtnHandler = () => {
+        if (closeBtn.classList.contains('is-closing')) return;
+        closeBtn.classList.add('is-closing');
+        setTimeout(() => closeModal(), TIMINGS.ROTATION_MS);
+    };
+
+    const confirmAndGo = () => {
+        if (!selectedDestination) { closeModal(); return; }
+        const url = selectedDestination;
+        closeModal();
+        setTimeout(() => { window.location.href = url; }, TIMINGS.FADE_MS + 50);
+    };
+
     if (closeBtn) attachTapHandler(closeBtn, closeBtnHandler);
     if (cancelBtn) attachTapHandler(cancelBtn, (e) => { createRipple(e, cancelBtn); closeModal(); });
     if (confirmBtn) attachTapHandler(confirmBtn, (e) => { createRipple(e, confirmBtn); confirmAndGo(); });
+
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
+
     window.triggerAgeModal = (url) => { selectedDestination = url; openModal(); };
 }
