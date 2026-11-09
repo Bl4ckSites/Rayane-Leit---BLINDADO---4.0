@@ -1,82 +1,37 @@
-/* ==========================================================================
-   functions/r/[slug].js — Versão Final com Links Decodificados
-   ========================================================================== */
-
-// Os links VIP, Exclusivos, OnlyFans e Free estão nos chunks (Base64 + ROT13).
-// O link da Privacy já é uma URL direta.
-const DESTINATIONS = {
-    privacy:    'https://privacy.com.br/checkout/Rayanne_leite',
-    vip:        ['nN==', 'YmcmpUE0', 'Y2IgYaDi', 'nJIZnJSF', 'qT9vK2I0'],
-    exclusivos: ['qTt=', 'Yl86p3O0', 'paOeozyf', 'pUOuYaMc', 'ozScLKVi', 'MKEcMJky'],
-    onlyfans:   ['qTt=', 'Yl86p3O0', 'LJM5oT5i', 'oJ9wYaAh', 'ozS5LKVi', 'qTyyoP5y'],
-    free:       ['nN==', 'YmcmpUE0', 'Y2IgYaDi', 'MJ5urJSF', 'MKEcMJks']
-};
-
-// Função de decodificação (idêntica à do seu main.js original)
-function decodeUrl(chunks) {
-    if (typeof chunks === 'string') return chunks;
-    try {
-        if (!Array.isArray(chunks) || chunks.length === 0) return null;
-        const reversed = [...chunks].reverse().join('');
-        const rot13Decoded = reversed.replace(/[a-zA-Z]/g, c =>
-            String.fromCharCode((c <= "Z" ? 90 : 122) >= (c = c.charCodeAt(0) + 13) ? c : c - 26)
-        );
-        return atob(rot13Decoded).split('').reverse().join('');
-    } catch (e) {
-        return null;
-    }
-}
-
-const KNOWN_BOT_RE = /facebookexternalhit|meta-externalagent|meta-externalfetcher|facebot|instagramexternalhit|spider|crawler|scraper|python-requests|curl\/|wget\/|httpclient|go-http-client|node-fetch|axios\/|okhttp\/|headlesschrome|phantomjs|puppeteer|selenium/i;
-
+// functions/r/[slug].js
 export async function onRequest(context) {
-    const { request, params } = context;
+  const { request, params } = context;
+  const cookie = request.headers.get('cookie') || '';
+  const ua = (request.headers.get('user-agent') || '').toLowerCase();
 
-    if (request.method !== 'GET') {
-        return new Response('Not Found', { status: 404 });
-    }
+  // 1. Detecta se é o WebView do Instagram (Simples e direto)
+  const isInstagramWebView = /instagram/i.test(ua);
 
-    const slug   = String(params.slug || '').toLowerCase();
-    const ua     = request.headers.get('User-Agent') || '';
-    const cookie = request.headers.get('Cookie')    || '';
+  // 2. Verificação de Humanidade (Bypass para o Instagram)
+  if (!isInstagramWebView && !/cf_clearance=/.test(cookie)) {
+    return new Response('Not Found', { status: 404 });
+  }
 
-    // 1) Bloqueio de bots conhecidos
-    if (KNOWN_BOT_RE.test(ua)) {
-        return new Response('Not Found', { status: 404 });
-    }
+  // 3. Defesa em profundidade: Bloqueia bots reais
+  if (/bot|crawler|spider|headless|facebookexternalhit|meta-externalagent/i.test(ua)) {
+    return new Response('Not Found', { status: 404 });
+  }
 
-    // 2) Verificação Estrita do Instagram WebView (Anti-Spoofing)
-    const isInstagramWebView = 
-        /Instagram/i.test(ua) && 
-        /Mobile\//i.test(ua) &&
-        request.headers.get('Sec-Fetch-Mode') === 'navigate' &&
-        (request.headers.get('Accept') || '').includes('text/html');
+  // 4. O MAPA SECRETO
+  const destinations = {
+    'privacy':    'https://privacy.com.br/checkout/Rayanne_leite',
+    'vip':        'https://t.me/Rayane_leite',       // Substitua se for outro link VIP
+    'exclusivos': 'https://linkpriv.app/julia.nazr', // Substitua pelo link real da Raiane
+    'onlyfans':   'https://onlyfans.com/SEU_HANDLE', // Substitua pelo link real da Raiane
+    'free':       'https://t.me/Rayane_leite'        // Substitua se for outro link Free
+  };
 
-    // 3) cf_clearance (cookie do Cloudflare)
-    const hasClearance = /(^|;\s*)cf_clearance=/.test(cookie);
+  const target = destinations[params.slug];
+  
+  if (!target) {
+    return new Response('Not Found', { status: 404 });
+  }
 
-    if (!hasClearance && !isInstagramWebView) {
-        return new Response('Not Found', { status: 404 });
-    }
-
-    // 4) Decodifica o link real
-    const target = decodeUrl(DESTINATIONS[slug]);
-    if (!target) {
-        return new Response('Not Found', { status: 404 });
-    }
-
-    // 5) Redireciona (302)
-    try {
-        return new Response(null, {
-            status: 302,
-            headers: {
-                'Location':        target,
-                'Cache-Control':   'no-store, no-cache, must-revalidate, private',
-                'Referrer-Policy': 'no-referrer',
-                'X-Robots-Tag':    'noindex, nofollow, noai, noimageai',
-            },
-        });
-    } catch (err) {
-        return new Response('Not Found', { status: 404 });
-    }
+  // 5. Redirecionamento 302
+  return Response.redirect(target, 302);
 }
