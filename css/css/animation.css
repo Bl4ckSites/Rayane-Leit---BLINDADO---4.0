@@ -1,0 +1,404 @@
+/* ==========================================================================
+   RAIANE LEIT — animation.css
+   Animações: entrada INSTANTÂNEA (intro → socials → cards) + interações.
+   --------------------------------------------------------------------------
+   Timeline (ultra-rápida):
+     Intro (título + ícone + legenda)  → 0ms  · 70ms
+     Instagram                          → 40ms · 70ms · de baixo pra cima
+     Telegram                           → 55ms · 70ms · de cima pra baixo
+     X                                  → 70ms · 70ms · de baixo pra cima
+     Facebook                           → 85ms · 70ms · de cima pra baixo
+     Cards                              → 0ms  · 60ms · micro fade (sem delay)
+   Tempo total até tudo visível: ~155ms
+   ========================================================================== */
+
+/* =========================================
+   0. VARIÁVEIS DE ANIMAÇÃO
+   ========================================= */
+:root {
+    --anim-fast:    35ms;
+    --anim-base:    50ms;
+    --anim-slow:    70ms;
+    --anim-slower:  90ms;
+    --anim-modal:   70ms;
+    --anim-ripple:  180ms;
+
+    --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --press-scale:       0.97;
+    --press-scale-soft:  0.98;
+    --hover-scale:       1.05;
+    --card-hover-scale:  1.02;
+}
+
+/* =========================================
+   1. KEYFRAMES
+   ========================================= */
+
+/* ---------- Entradas ---------- */
+@keyframes titleInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(6px) scale(0.99);
+        filter: blur(1px);
+    }
+    60% { filter: blur(0); }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes socialInUp {
+    0%   { opacity: 0; transform: translateY(6px) scale(0.94); }
+    70%  { transform: translateY(-1px) scale(1.02); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes socialInDown {
+    0%   { opacity: 0; transform: translateY(-6px) scale(0.94); }
+    70%  { transform: translateY(1px) scale(1.02); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Entrada dos cards — curtíssima, sem atraso */
+@keyframes cardInQuick {
+    0%   { opacity: 0; transform: translateY(4px) scale(0.985); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- Feedback de clique ---------- */
+@keyframes cardPulse {
+    0%   { transform: scale(0.97); }
+    45%  { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+@keyframes iconBurst {
+    0%   { transform: scale(1)    rotate(0); }
+    40%  { transform: scale(1.12) rotate(-4deg); }
+    70%  { transform: scale(0.98) rotate(2deg); }
+    100% { transform: scale(1)    rotate(0); }
+}
+
+@keyframes rippleExpand {
+    0%   { transform: scale(0);   opacity: 0.75; }
+    100% { transform: scale(3.6); opacity: 0; }
+}
+
+/* ---------- Foco acessível ---------- */
+@keyframes cardFocusPulse {
+    0%, 100% {
+        box-shadow:
+            0 0 0 3px rgba(255, 255, 255, 0.7),
+            0 0 14px rgba(232, 53, 60, 0.25);
+    }
+    50% {
+        box-shadow:
+            0 0 0 3px rgba(255, 255, 255, 0.9),
+            0 0 20px rgba(232, 53, 60, 0.40);
+    }
+}
+
+/* ---------- Modal ---------- */
+@keyframes modalTitlePulse {
+    0%, 100% {
+        box-shadow:
+            0 0 16px rgba(255, 255, 255, 0.06),
+            inset 0 0 8px rgba(255, 255, 255, 0.05);
+    }
+    50% {
+        box-shadow:
+            0 0 20px rgba(232, 53, 60, 0.18),
+            0 0 30px rgba(232, 53, 60, 0.09),
+            inset 0 0 10px rgba(255, 255, 255, 0.08);
+    }
+}
+
+@keyframes crownBob {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50%      { transform: translateX(-50%) translateY(-2px); }
+}
+
+/* ---------- Ambiente (EXTREMAMENTE sutil) ---------- */
+@keyframes bgBreath {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.004); }
+}
+
+@keyframes titleGlow {
+    0%, 100% { filter: drop-shadow(0 2px 18px rgba(0, 0, 0, 0.55)); }
+    50%      { filter: drop-shadow(0 2px 22px rgba(255, 255, 255, 0.10)); }
+}
+
+/* =========================================
+   2. FUNDO — RESPIRAÇÃO QUASE IMPERCEPTÍVEL
+   ========================================= */
+.page-bg {
+    animation: bgBreath 24s var(--ease-in-out) infinite;
+    will-change: transform;
+    transform-origin: center center;
+}
+
+/* =========================================
+   3. ENTRADA — INTRO (título + ícone + legenda)
+   ========================================= */
+.hero-intro {
+    animation: titleInUp 70ms var(--ease-out) 0ms backwards;
+}
+
+.hero-title {
+    animation: titleGlow 3.5s var(--ease-in-out) 200ms infinite;
+    will-change: filter;
+}
+
+/* =========================================
+   4. ENTRADA — REDES SOCIAIS (ZIGUE-ZAGUE)
+   ========================================= */
+.top-socials .social-link {
+    will-change: transform, opacity;
+}
+
+.top-socials .social-link:nth-child(1) {
+    animation: socialInUp   70ms var(--ease-bounce) 40ms backwards;
+}
+.top-socials .social-link:nth-child(2) {
+    animation: socialInDown 70ms var(--ease-bounce) 55ms backwards;
+}
+.top-socials .social-link:nth-child(3) {
+    animation: socialInUp   70ms var(--ease-bounce) 70ms backwards;
+}
+.top-socials .social-link:nth-child(4) {
+    animation: socialInDown 70ms var(--ease-bounce) 85ms backwards;
+}
+
+/* =========================================
+   5. CARDS — ENTRADA ULTRA-RÁPIDA (SEM DELAY)
+   ========================================= */
+.card-item {
+    animation: cardInQuick 60ms var(--ease-out) 0ms backwards;
+    will-change: transform, opacity;
+}
+
+/* =========================================
+   6. CARDS — HOVER / ACTIVE / CLICK
+   ========================================= */
+.card-item {
+    transition:
+        transform    var(--anim-base) var(--ease-out),
+        box-shadow   var(--anim-slow) var(--ease-out),
+        background   var(--anim-base) var(--ease-out),
+        border-color var(--anim-base) var(--ease-out);
+}
+
+@media (hover: hover) {
+    .card-item:hover {
+        transform: scale(var(--card-hover-scale)) translateY(-3px);
+    }
+}
+
+.card-item:active {
+    transform: scale(var(--press-scale-soft));
+    transition: transform 40ms var(--ease-out);
+}
+
+.card-item.card-pulse {
+    animation: cardPulse 150ms var(--ease-bounce);
+}
+
+.card-item.card-pulse .card-icon,
+.card-item.card-pulse .card-icon img,
+.card-item.card-pulse .card-icon svg {
+    animation: iconBurst 150ms var(--ease-bounce);
+}
+
+.card-icon {
+    transition: transform var(--anim-slow) var(--ease-out);
+}
+
+@media (hover: hover) {
+    .card-item:hover .card-icon {
+        transform: translateY(-50%) scale(1.06);
+    }
+}
+
+/* Shimmer — brilho diagonal no hover */
+.card-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255, 255, 255, 0.22) 50%,
+        transparent 60%
+    );
+    transform: translateX(-120%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0ms;
+}
+
+@media (hover: hover) {
+    .card-item:hover::after {
+        opacity: 1;
+        transform: translateX(120%);
+        transition:
+            transform 300ms var(--ease-out),
+            opacity   80ms linear;
+    }
+}
+
+/* =========================================
+   7. CARDS — FOCO VISÍVEL
+   ========================================= */
+.card-item:focus-visible {
+    outline: none;
+    animation: cardFocusPulse 0.7s var(--ease-in-out) infinite;
+}
+
+/* =========================================
+   8. RIPPLE (cards + botões do modal)
+   ========================================= */
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.42);
+    transform: scale(0);
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 0;
+    animation: rippleExpand var(--anim-ripple) var(--ease-out) forwards;
+}
+
+.modal-btn-secondary .ripple {
+    background: rgba(232, 53, 60, 0.35);
+}
+
+/* =========================================
+   9. SOCIAL LINKS — HOVER / ACTIVE
+   ========================================= */
+.social-link {
+    transition:
+        opacity      var(--anim-base) var(--ease-out),
+        transform    var(--anim-base) var(--ease-out),
+        box-shadow   var(--anim-base) var(--ease-out),
+        background   var(--anim-base) var(--ease-out),
+        border-color var(--anim-base) var(--ease-out);
+}
+
+@media (hover: hover) {
+    .social-link:hover {
+        transform: translateY(-3px) scale(var(--hover-scale));
+    }
+}
+
+.social-link:active {
+    transform: scale(0.9);
+    transition: transform 40ms var(--ease-out);
+}
+
+/* =========================================
+   10. MODAL — OVERLAY + CONTAINER
+   ========================================= */
+.modal-overlay {
+    transition:
+        opacity    var(--anim-modal) var(--ease-out),
+        visibility var(--anim-modal) var(--ease-out);
+}
+
+.modal-container {
+    transform: scale(0.96) translateY(6px);
+    transition: transform var(--anim-modal) var(--ease-bounce);
+    will-change: transform;
+}
+
+.modal-overlay.active .modal-container {
+    transform: scale(1) translateY(0);
+}
+
+.modal-overlay.is-closing {
+    opacity: 0;
+    transition:
+        opacity    var(--anim-slow) var(--ease-in-out),
+        visibility var(--anim-slow) var(--ease-in-out);
+}
+
+.modal-overlay.is-closing .modal-container {
+    transform: scale(1.02) translateY(-3px);
+    transition: transform var(--anim-slow) var(--ease-in-out);
+}
+
+/* =========================================
+   11. MODAL — BOTÃO FECHAR (X)
+   ========================================= */
+.modal-close-btn {
+    transition:
+        background    var(--anim-base) var(--ease-out),
+        border-color  var(--anim-base) var(--ease-out),
+        color         var(--anim-base) var(--ease-out),
+        transform     var(--anim-base) var(--ease-out);
+    will-change: transform;
+}
+
+@media (hover: hover) {
+    .modal-close-btn:hover {
+        transform: rotate(90deg);
+    }
+}
+
+.modal-close-btn:active {
+    transform: scale(0.92);
+    transition: transform 40ms var(--ease-out);
+}
+
+.modal-close-btn.is-closing {
+    transform: rotate(180deg) scale(0.88);
+    transition:
+        transform var(--anim-slower) var(--ease-bounce),
+        opacity   var(--anim-slower) var(--ease-out);
+    opacity: 0.85;
+}
+
+/* =========================================
+   12. MODAL — BOTÕES DE AÇÃO
+   ========================================= */
+.modal-btn {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    transition:
+        filter        var(--anim-base) var(--ease-out),
+        background    var(--anim-base) var(--ease-out),
+        color         var(--anim-base) var(--ease-out),
+        border-color  var(--anim-base) var(--ease-out),
+        box-shadow    var(--anim-base) var(--ease-out),
+        transform     var(--anim-fast) var(--ease-out);
+    will-change: transform;
+}
+
+@media (hover: hover) {
+    .modal-btn:hover {
+        transform: translateY(-1px);
+    }
+}
+
+.modal-btn:active {
+    transform: translateY(0) scale(var(--press-scale));
+    transition: transform 40ms var(--ease-out);
+}
+
+/* =========================================
+   13. MODAL — CÍRCULO 18+ E COROA
+   ========================================= */
+#modal-title {
+    animation: modalTitlePulse 1.5s var(--ease-in-out) infinite;
+}
+
+#modal-title::before {
+    animation: crownBob 2s var(--ease-in-out) infinite;
+}
