@@ -1,12 +1,11 @@
 /* ==========================================================================
-   RAIANE LEIT — main.js (Server-Side Vault client)
+   RAIANE LEIT — main.js (Server-Side Vault client + AbortController)
    --------------------------------------------------------------------------
    Fluxo:
-     1. fetch('/api/data')  →  recebe { backgroundImage, cards }
+     1. fetch('/api/data') com limite de 15s de espera (para não travar no Insta)
      2. Injeta imagem Base64 no .page-bg com degradação graciosa (try/catch)
      3. Renderiza os cards usando o `path` interno (ex: /r/privacy)
      4. Mantém 100% das animações, áudio, ripple e modal +18 originais.
-   Nenhuma URL real ou imagem secreta existe neste arquivo.
    ========================================================================== */
 'use strict';
 
@@ -51,7 +50,7 @@ function trackCardClick(cardName, cardId, internalPath) {
 }
 
 /* =============================================================
-   ÁUDIO — clique sintético (idêntico ao original)
+   ÁUDIO — clique sintético
    ============================================================= */
 let audioCtx = null;
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -88,7 +87,7 @@ function playClickSound() {
 }
 
 /* =============================================================
-   RIPPLE (idêntico)
+   RIPPLE
    ============================================================= */
 function createRipple(event, element) {
     if (prefersReducedMotion.matches) return;
@@ -113,7 +112,7 @@ function createRipple(event, element) {
 }
 
 /* =============================================================
-   TAP HELPER (idêntico)
+   TAP HELPER — clique/tap unificado
    ============================================================= */
 const TAP_MAX_DISTANCE = 10;
 const TAP_MAX_DURATION = 500;
@@ -164,16 +163,27 @@ function attachTapHandler(element, handler) {
 }
 
 /* =============================================================
-   CARREGAMENTO DO COFRE
+   CARREGAMENTO DO COFRE (COM TIMEOUT PARA O INSTAGRAM)
    ============================================================= */
 async function loadVault() {
+    // Cria um "abortador" para cancelar a requisição se ela demorar muito
+    const controller = new AbortController();
+    
+    // Define o limite de tempo: 15 segundos. 
+    // (Se o Instagram travar, o site avisa o usuário em vez de ficar no spinner eterno)
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
         const response = await fetch('/api/data', {
             method: 'GET',
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json' },
-            cache: 'no-store'
+            cache: 'no-store',
+            signal: controller.signal // Passa o sinal do abortador
         });
+
+        // Limpa o timer, pois a resposta chegou
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             throw new Error('Vault HTTP ' + response.status);
@@ -184,7 +194,7 @@ async function loadVault() {
             throw new Error('Vault payload inválido');
         }
 
-        // 1) Degradação Graciosa — injeta fundo Base64
+        // 1) DEGRADAÇÃO GRACIOSA — injeta fundo Base64
         applyBackgroundSafe(data.backgroundImage);
 
         // 2) Renderiza cards (com path interno)
@@ -192,15 +202,22 @@ async function loadVault() {
         renderCards(data.cards);
 
     } catch (err) {
+        // Limpa o timer se der erro também
+        clearTimeout(timeoutId);
+        
         console.error('[Vault] Falha ao carregar conteúdo:', err);
+        
+        // Se o erro for por timeout (AbortError), avisa no console
+        if (err.name === 'AbortError') {
+            console.warn('[Vault] A requisição demorou mais de 15 segundos e foi cancelada.');
+        }
+        
         renderFallback();
     }
 }
 
 /* -------------------------------------------------------------
    DEGRADAÇÃO GRACIOSA — injeta imagem Base64 com try/catch.
-   Se a string for gigante demais e travar o WebView, o catch
-   mantém o fundo preto do CSS e os botões são renderizados.
    ------------------------------------------------------------- */
 function applyBackgroundSafe(base64) {
     if (!base64 || typeof base64 !== 'string') return;
@@ -214,7 +231,7 @@ function applyBackgroundSafe(base64) {
 }
 
 /* -------------------------------------------------------------
-   RENDER DOS CARDS — usa `path` interno (/r/slug)
+   RENDER DOS CARDS
    ------------------------------------------------------------- */
 function clearContainer() {
     const container = document.getElementById('cards-container');
@@ -235,7 +252,6 @@ function renderCards(cards) {
         el.setAttribute('aria-label', 'Acessar ' + (card.title || card.name || card.id));
         el.style.setProperty('--card-index', index);
 
-        // Ícone
         const iconWrap = document.createElement('span');
         iconWrap.className = 'card-icon card-icon--' + card.id;
         iconWrap.setAttribute('aria-hidden', 'true');
@@ -251,7 +267,6 @@ function renderCards(cards) {
             iconWrap.appendChild(img);
         }
 
-        // Rótulo
         const label = document.createElement('span');
         label.className = 'card-label';
         label.textContent = card.title || card.name;
@@ -259,7 +274,6 @@ function renderCards(cards) {
         el.appendChild(iconWrap);
         el.appendChild(label);
 
-        // Clique
         attachTapHandler(el, (event) => {
             createRipple(event, el);
             handleCardClick(card, el);
@@ -293,7 +307,7 @@ function handleCardClick(card, cardElement) {
 }
 
 /* -------------------------------------------------------------
-   FALLBACK — se o cofre falhar
+   FALLBACK — se o cofre falhar ou der timeout
    ------------------------------------------------------------- */
 function renderFallback() {
     const container = document.getElementById('cards-container');
@@ -301,7 +315,7 @@ function renderFallback() {
     container.setAttribute('aria-busy', 'false');
     container.innerHTML =
         '<div class="card-item" style="cursor:default;text-align:center;">' +
-            '<span class="card-label">Recarregue a página para continuar.</span>' +
+            '<span class="card-label">Conexão lenta. Recarregue a página.</span>' +
         '</div>';
 }
 
@@ -322,7 +336,7 @@ function initSocialLinks() {
 }
 
 /* =============================================================
-   MODAL +18 — mantido 100% igual ao original
+   MODAL +18
    ============================================================= */
 function initModal() {
     const modal      = document.getElementById('age-modal');
