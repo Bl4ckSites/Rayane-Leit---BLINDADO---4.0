@@ -1,22 +1,14 @@
 /* ==========================================================================
-   functions/r/[slug].js
-   --------------------------------------------------------------------------
-   Redirecionador seguro. O "Mapa Secreto" (URLs reais) vive APENAS aqui,
-   no servidor — nunca no HTML, CSS ou JS do cliente.
-
-   Regras:
-     • Bot conhecido (UA)       → 404
-     • cf_clearance presente    → 302 → URL real
-     • WebView do Instagram     → 302 → URL real
-     • Qualquer outro           → 404 (não 401)
+   functions/r/[slug].js — Versão com Validação de Headers (Anti-Spoofing)
    ========================================================================== */
 
+// ⚠️ ATUALIZE O MAPA ABAIXO COM AS URLS REAIS
 const DESTINATIONS = {
     privacy:    'https://privacy.com.br/checkout/Rayanne_leite',
-    vip:        'https://t.me/RaiLeite_bot',
-    exclusivos: 'https://linkpriv.app/raianeleite',
-    onlyfans:   'https://onlyfans.com/rayane.leit',
-    free:       'https://t.me/Rayane_leite',
+    vip:        'https://t.me/SEU_LINK_VIP_AQUI',
+    exclusivos: 'https://t.me/SEU_LINK_EXCLUSIVOS_AQUI',
+    onlyfans:   'https://onlyfans.com/SEU_HANDLE_AQUI',
+    free:       'https://t.me/SEU_LINK_FREE_AQUI',
 };
 
 const KNOWN_BOT_RE = /facebookexternalhit|meta-externalagent|meta-externalfetcher|facebot|instagramexternalhit|spider|crawler|scraper|python-requests|curl\/|wget\/|httpclient|go-http-client|node-fetch|axios\/|okhttp\/|headlesschrome|phantomjs|puppeteer|selenium/i;
@@ -32,28 +24,30 @@ export async function onRequest(context) {
     const ua     = request.headers.get('User-Agent') || '';
     const cookie = request.headers.get('Cookie')    || '';
 
-    // 1) Bot → 404.
+    // 1) Bloqueio de bots conhecidos
     if (KNOWN_BOT_RE.test(ua)) {
         return new Response('Not Found', { status: 404 });
     }
 
-    // 2) WebView do Instagram (exceção legítima).
-    const isInstagramWebView = /Instagram/i.test(ua) && /Mobile\//i.test(ua);
+    // 2) Verificação Estrita do Instagram WebView
+    const isInstagramWebView = 
+        /Instagram/i.test(ua) && 
+        /Mobile\//i.test(ua) &&
+        request.headers.get('Sec-Fetch-Mode') === 'navigate' && // Cliques de navegação enviam "navigate"
+        (request.headers.get('Accept') || '').includes('text/html');
 
-    // 3) cf_clearance.
+    // 3) cf_clearance (cookie do Cloudflare)
     const hasClearance = /(^|;\s*)cf_clearance=/.test(cookie);
 
     if (!hasClearance && !isInstagramWebView) {
         return new Response('Not Found', { status: 404 });
     }
 
-    // 4) Busca o alvo no mapa secreto.
     const target = DESTINATIONS[slug];
     if (!target) {
         return new Response('Not Found', { status: 404 });
     }
 
-    // 5) Redirect 302.
     try {
         return new Response(null, {
             status: 302,
