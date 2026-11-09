@@ -1,3 +1,4 @@
+// functions/_middleware.js
 export async function onRequest(context) {
   const { request, next } = context;
   const ua = (request.headers.get('user-agent') || '').toLowerCase();
@@ -7,16 +8,16 @@ export async function onRequest(context) {
   const isMetaBotUA = /facebookexternalhit|meta-externalagent|meta-externalfetcher|meta-webindexer|whatsapp/i.test(ua);
 
   // Bloqueia APENAS se vier da ASN da Meta (32934) E for um User-Agent de bot.
-  // Isso permite que usuários reais do WhatsApp (que usam UA de navegador normal) passem.
+  // Isso permite que usuários reais do WhatsApp/Instagram (que usam UA de navegador normal) passem.
   if (asn === 32934 && isMetaBotUA) {
     return new Response(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Julia Nazar">
+    <meta property="og:title" content="Raiane Leite">
     <meta property="og:description" content="Meus links oficiais ✨">
     <meta property="og:image" content="/og-safe.jpg">
-    <meta property="og:url" content="https://julianazarh.com/">
+    <meta property="og:url" content="https://raianeleite.com/">
 </head>
 <body></body>
 </html>`, {
