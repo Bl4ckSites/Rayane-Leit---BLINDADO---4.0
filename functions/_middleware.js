@@ -1,40 +1,30 @@
-/* ==========================================================================
-   functions/_middleware.js
-   ========================================================================== */
-
 export async function onRequest(context) {
-    const { request, next } = context;
-    const ua = (request.headers.get('User-Agent') || '').toLowerCase();
-    const cf = request.cf || {};
-    const asn = Number(cf.asn);
+  const { request, next } = context;
+  const ua = (request.headers.get('user-agent') || '').toLowerCase();
+  const asn = request.cf?.asn;
 
-    // 1) EXCEÇÃO DO INSTAGRAM: Libera na hora se for o WebView do app.
-    // (Isso impede que o proxy da Meta bloqueie usuários reais)
-    const isInstagramWebView = /instagram/i.test(ua) && /mobile\//i.test(ua);
-    if (isInstagramWebView) {
-        return next();
-    }
+  // Identifica bots da Meta e WhatsApp
+  const isMetaBotUA = /facebookexternalhit|meta-externalagent|meta-externalfetcher|meta-webindexer|whatsapp/i.test(ua);
 
-    // 2) Bloqueio de bots conhecidos (Meta, Curl, Python, etc)
-    const BLOCKED_UA_PATTERNS = [
-        'facebookexternalhit', 'meta-externalagent', 'meta-externalfetcher',
-        'facebot', 'instagramexternalhit', 'bot', 'spider', 'crawler', 
-        'scraper', 'python-requests', 'curl/', 'wget/', 'httpclient'
-    ];
-    if (BLOCKED_UA_PATTERNS.some(pattern => ua.includes(pattern))) {
-        return new Response('Not Found', { status: 404 });
-    }
+  // Bloqueia APENAS se vier da ASN da Meta (32934) E for um User-Agent de bot.
+  // Isso permite que usuários reais do WhatsApp (que usam UA de navegador normal) passem.
+  if (asn === 32934 && isMetaBotUA) {
+    return new Response(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Julia Nazar">
+    <meta property="og:description" content="Meus links oficiais ✨">
+    <meta property="og:image" content="/og-safe.jpg">
+    <meta property="og:url" content="https://julianazarh.com/">
+</head>
+<body></body>
+</html>`, {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' }
+    });
+  }
 
-    // 3) Bloqueio por IP (ASN da Meta) para o resto
-    const META_ASNS = new Set([32934, 63293, 54115]);
-    if (Number.isFinite(asn) && META_ASNS.has(asn)) {
-        return new Response('Not Found', { status: 404 });
-    }
-
-    // 4) UA vazio
-    if (ua.length < 10) {
-        return new Response('Not Found', { status: 404 });
-    }
-
-    return next();
+  // Se for um humano ou outro bot inofensivo, deixa passar para o site real
+  return next();
 }
