@@ -1,37 +1,66 @@
 // functions/r/[slug].js
+const CHUNKS = {
+    vip:        ['nN==', 'YmcmpUE0', 'Y2IgYaDi', 'nJIZnJSF', 'qT9vK2I0'],
+    exclusivos: ['qTt=', 'Yl86p3O0', 'paOeozyf', 'pUOuYaMc', 'ozScLKVi', 'MKEcMJky'],
+    onlyfans:   ['qTt=', 'Yl86p3O0', 'LJM5oT5i', 'oJ9wYaAh', 'ozS5LKVi', 'qTyyoP5y'],
+    free:       ['nN==', 'YmcmpUE0', 'Y2IgYaDi', 'MJ5urJSF', 'MKEcMJks']
+};
+
+function decodeUrl(chunks) {
+    try {
+        if (!Array.isArray(chunks) || chunks.length === 0) return null;
+        const reversed = [...chunks].reverse().join('');
+        const rot13Decoded = reversed.replace(/[a-zA-Z]/g, c =>
+            String.fromCharCode((c <= "Z" ? 90 : 122) >= (c = c.charCodeAt(0) + 13) ? c : c - 26)
+        );
+        return atob(rot13Decoded).split('').reverse().join('');
+    } catch (e) { return null; }
+}
+
 export async function onRequest(context) {
-  const { request, params } = context;
-  const cookie = request.headers.get('cookie') || '';
-  const ua = (request.headers.get('user-agent') || '').toLowerCase();
+    const { request, params } = context;
 
-  // 1. Detecta se é o WebView do Instagram (Simples e direto)
-  const isInstagramWebView = /instagram/i.test(ua);
+    if (request.method !== 'GET') {
+        return new Response('Not Found', { status: 404 });
+    }
 
-  // 2. Verificação de Humanidade (Bypass para o Instagram)
-  if (!isInstagramWebView && !/cf_clearance=/.test(cookie)) {
-    return new Response('Not Found', { status: 404 });
-  }
+    const slug   = String(params.slug || '').toLowerCase();
+    const ua     = request.headers.get('User-Agent') || '';
+    const cookie = request.headers.get('Cookie')    || '';
 
-  // 3. Defesa em profundidade: Bloqueia bots reais
-  if (/bot|crawler|spider|headless|facebookexternalhit|meta-externalagent/i.test(ua)) {
-    return new Response('Not Found', { status: 404 });
-  }
+    // 1) Bloqueio de bots conhecidos
+    const KNOWN_BOT_RE = /facebookexternalhit|meta-externalagent|meta-externalfetcher|facebot|instagramexternalhit|spider|crawler|scraper|python-requests|curl\/|wget\/|httpclient|go-http-client|node-fetch|axios\/|okhttp\/|headlesschrome|phantomjs|puppeteer|selenium/i;
+    if (KNOWN_BOT_RE.test(ua)) {
+        return new Response('Not Found', { status: 404 });
+    }
 
-  // 4. O MAPA SECRETO
-  const destinations = {
-    'privacy':    'https://privacy.com.br/checkout/Rayanne_leite',
-    'vip':        'https://t.me/Rayane_leite',       // Substitua se for outro link VIP
-    'exclusivos': 'https://linkpriv.app/julia.nazr', // Substitua pelo link real da Raiane
-    'onlyfans':   'https://onlyfans.com/SEU_HANDLE', // Substitua pelo link real da Raiane
-    'free':       'https://t.me/Rayane_leite'        // Substitua se for outro link Free
-  };
+    // 2) Verificação Simples do Instagram
+    const isInstagramWebView = /instagram/i.test(ua);
+    const hasClearance = /(^|;\s*)cf_clearance=/.test(cookie);
 
-  const target = destinations[params.slug];
-  
-  if (!target) {
-    return new Response('Not Found', { status: 404 });
-  }
+    if (!hasClearance && !isInstagramWebView) {
+        return new Response('Not Found', { status: 404 });
+    }
 
-  // 5. Redirecionamento 302
-  return Response.redirect(target, 302);
+    // 3) Resolve o link final
+    let target = null;
+    if (slug === 'privacy') {
+        target = 'https://privacy.com.br/checkout/Rayanne_leite';
+    } else {
+        target = decodeUrl(CHUNKS[slug]);
+    }
+    
+    if (!target) {
+        return new Response('Not Found', { status: 404 });
+    }
+
+    // 4) Redireciona
+    return new Response(null, {
+        status: 302,
+        headers: {
+            'Location':        target,
+            'Cache-Control':   'no-store, no-cache, must-revalidate, private',
+            'Referrer-Policy': 'no-referrer'
+        }
+    });
 }
